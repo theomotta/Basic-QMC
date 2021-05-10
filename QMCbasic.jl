@@ -109,9 +109,9 @@ const dδn=dδp=dδΛ=dδΞ0=dδΞm=0.0
 const d2p=d2n=d2Λ=d2Ξ0=d2Ξm=0.0
 
 #Hyperon weights (linear multiplicative term on the mass)
-const ωσn=ωσp=1.0
-const ωσΛ=(0.6672+0.0462*rb-0.0021*rb^2)
-const ωσΞm=ωσΞ0=(0.3395+0.0282*rb-0.0128*rb^2)
+const ωσn=ωσp=-1.0
+const ωσΛ=-(0.6672+0.0462*rb-0.0021*rb^2)
+const ωσΞm=ωσΞ0=-(0.3395+0.0282*rb-0.0128*rb^2)
 const ωδn=ωδp=0.0
 const ωδΛ=0.0
 const ωδΞm=ωδΞ0=0.0
@@ -208,7 +208,7 @@ gΓδΞm(sig,del,gsig,gdel)=(ωδΞm*gdel +d2Ξm*gdel*gsig*sig)
 
 # Self Consistency Equations
 function SCEσ(sig,del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel)
-    cte=2/((2π)^3) /mσ^2
+    cte=2/((2π)^3)
 
     ins(m)=k->(4π)*k^2*m/sqrt(k^2+m^2) #scalar density "ns" integrand
 
@@ -226,11 +226,8 @@ function SCEσ(sig,del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel)
 
     #Ξm contribution
     p1=p1+ΓσΞm(sig,del,gsig,gdel)*integrate1(ins(MΞm(sig,del,gsig,gdel)),0.0,kf(nΞm)+1e-10*MeV)
-
-    #λ3 contribution
-    p1=p1- (λ3/(2mσ^2))*gsig^3*sig^2
-
-    return (-sig + p1*cte)
+    
+    return (mσ^2*sig + (λ3/2)*gsig^3*sig^2 - p1*cte)
 end
 function SCEδ(sig,del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel)
     cte=2/((2π)^3) /mδ^2
@@ -257,7 +254,7 @@ end
 
 function σ0(del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel,er=0.1MeV,d=0.1MeV)
     f1(sig)=SCEσ(sig,del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel)
-    return quickNR(f1,d,10MeV,er)
+    return quickNR(f1,d,10MeV,er)#,absit=true)
 end
 function δ0(sig,nn,np,nΛ,nΞ0,nΞm,gsig,gdel,er=0.1MeV,d=0.1MeV)
     f1(del)=SCEδ(sig,del,nn,np,nΛ,nΞ0,nΞm,gsig,gdel)
@@ -444,9 +441,7 @@ function NMparametersFull(gsig,gdel,gomg,grho)
     Sfit(n)=(H(n,0,0,0,0,0,0,gsig,gdel,gomg,grho)-H(n/2,n/2,0,0,0,0,0,gsig,gdel,gomg,grho))/n
     nsat=quickNR(dEfit,0.001fmm3,0.01fmm3,0.001fmm3,absit=true)
     function K0(n,del=0.003*fm^-3)
-        #de1st(n)=(εsym(n+del)-εsym(n))/del
-        de1st(n)=d1f(ℰfit,n,del)
-        return 9*n^2*(d1f(de1st,n,del))
+        return 9*n^2*(d1f(dEfit,n,del))
     end
     function L0(n,del=0.003*fm^-3)
         de1st(n)=d1f(Sfit,n,del)
@@ -459,8 +454,8 @@ end
 
 #Fit function without delta
 function NMfit_noδ(P) #P=[dens,bind,satener]
-    g(X)=(sum(( (NMparameters(X[1],0,X[2],X[3]) .-P)./P ).^2 ))^(1/2)
-    res=optimize(g,[stdgsig,stdgomg,stdgrho],method=NelderMead())
+    g(X)=(sum(( (NMparameters(X[1],0,X[2],X[3]) .-P)./P ).^2 ))
+    res=optimize(g,[stdgsig,stdgomg,stdgrho],method=NelderMead(),g_tol=1e-7)
     @show res
     return res.minimizer[1],0.0,res.minimizer[2],res.minimizer[3]
 end
@@ -468,7 +463,9 @@ end
 @time fitresult=NMfit_noδ([0.148fmm3,-15.8MeV,30MeV])
 
 @show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
-NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
+@show NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
+
+println("here"); while true sleep(0.1) end
 
 @show stdgsig,stdgdel,stdgomg,stdgrho
 
