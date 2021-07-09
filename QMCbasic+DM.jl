@@ -44,8 +44,8 @@ const mρ=770MeV
 const mδ=983MeV
 
 #Dark Matter
-const mX=mn
-const GV=0fm^2 #This is a random value
+#const mX=mn
+#const GV=10.0fm^2
 
 #Couplings 2007 ω=6.11; ρ=2.74; σ=10.03
 const stdGsig=10.03fm^2
@@ -124,9 +124,9 @@ const dδn=dδp=dδΛ=dδΞ0=dδΞm=0.0
 const d2p=d2n=d2Λ=d2Ξ0=d2Ξm=0.0
 
 #Hyperon weights (linear multiplicative term on the mass)
-const ωσn=ωσp=1.0
-const ωσΛ=(0.6672+0.0462*rb-0.0021*rb^2)
-const ωσΞm=ωσΞ0=(0.3395+0.0282*rb-0.0128*rb^2)
+const ωσn=ωσp=-1.0
+const ωσΛ=-(0.6672+0.0462*rb-0.0021*rb^2)
+const ωσΞm=ωσΞ0=-(0.3395+0.0282*rb-0.0128*rb^2)
 const ωδn=ωδp=0.0
 const ωδΛ=0.0
 const ωδΞm=ωδΞ0=0.0
@@ -616,24 +616,23 @@ function SF(__β__)
     return beta,E,Pv
 end
 
-@time Btab,Etab,Ptab=SF(β)
-
 function adddark()
-    function darkequilibrium(nn,np,nΛ,nΞ0,nΞm,ne,nμ)
+    function darkequilibrium(nn,np,nΛ,nΞ0,nΞm,ne,nμ,start)
         mun=μn(nn,np,nΛ,nΞ0,nΞm,0.0,ne,nμ)
-        return real(mun^2-mX^2+0.0*im)^3/(3π^2)
-        foo(lX)=abs(sqrt(kf(lX)^2+mX^2)+(-mun+GV*lX))
-        #foo(lX)=(mun-μX(nn,np,nΛ,nΞ0,nΞm,lX,ne,nμ))^2
-        mn=optimize(x->foo(abs(x[1])),[nn],ConjugateGradient(),Optim.Options(g_tol=1e-8))
+        #return real(mun^2-mX^2+0.0*im)^3/(3π^2)
+        foo(lX)=(mun-μX(nn,np,nΛ,nΞ0,nΞm,lX,ne,nμ))^2
+        mn=optimize(x->foo(abs(x[1])),[start],ConjugateGradient(),Optim.Options(g_tol=1e-8))
         nX=cut(mn.minimizer[1])
         return nX
     end
     for i in 2:length(nrange)
-        Btab[i,6]=darkequilibrium(Btab[i,1:5]...,Btab[7:8]...)
+        Btab[i,6]=darkequilibrium(Btab[i,1:5]...,Btab[7:8]...,Btab[i-1,6]+1e-2)
         Etab[i,:].=H(Btab[i,:]...,fitresult...)
         Ptab[i,:].=P(Btab[i,:]...)
     end
 end
+
+@time Btab,Etab,Ptab=SF(βnohyp)
 adddark()
 
 ######################################################################
@@ -663,14 +662,16 @@ function MatchCrusts()
     @show crust_n[idx2]/0.16
     qmcidx1=findmin(abs.(crust_e[idx1]*mevpfm3 .-Etab))
     qmcidx2=findmin(abs.(crust_e[idx2]*mevpfm3 .-Etab))
-    vEtab1=vcat(crust_e[1:idx1-1].*mevpfm3,Etab[qmcidx1[2]:end])
-    vPtab1=vcat(crust_p[1:idx1-1].*mevpfm3,Ptab[qmcidx1[2]:end])
-    vEtab2=vcat(crust_e[1:idx2-1].*mevpfm3,Etab[qmcidx2[2]:end])
-    vPtab2=vcat(crust_p[1:idx2-1].*mevpfm3,Ptab[qmcidx2[2]:end])
-    return vEtab1,vPtab1, vEtab2,vPtab2
+    vEtab1=vcat(crust_e[1:idx1-1].*mevpfm3,Etab[qmcidx1[2]+1:end])
+    vPtab1=vcat(crust_p[1:idx1-1].*mevpfm3,Ptab[qmcidx1[2]+1:end])
+    vNtab1=vcat(crust_n[1:idx1-1],         ntot[qmcidx1[2]+1:end])
+    vEtab2=vcat(crust_e[1:idx2-1].*mevpfm3,Etab[qmcidx2[2]+1:end])
+    vPtab2=vcat(crust_p[1:idx2-1].*mevpfm3,Ptab[qmcidx2[2]+1:end])
+    vNtab2=vcat(crust_n[1:idx2-1],         ntot[qmcidx2[2]+1:end])
+    return vEtab1,vPtab1, vEtab2,vPtab2 ,vNtab1,vNtab2
 end
 
-(Etab1,Ptab1,Etab2,Ptab2)=MatchCrusts()
+(Etab1,Ptab1,Etab2,Ptab2,Ntab1,Ntab2)=MatchCrusts()
 plot(crust_e,crust_p,marker=true,label="crust")
 plot!(Etab./mevpfm3,Ptab./mevpfm3,marker=true,label="qmc")
 plot!(xaxis=[0,200],yaxis=[0,10])
@@ -698,45 +699,59 @@ Eeos1=LinearInterpolation(Ptab1[1:end].*fmm4_new,Etab1[1:end].*fmm4_new,extrapol
 Peos2=LinearInterpolation(Etab2[1:end].*fmm4_new,Ptab2[1:end].*fmm4_new,extrapolation_bc=Interpolations.Flat())
 Eeos2=LinearInterpolation(Ptab2[1:end].*fmm4_new,Etab2[1:end].*fmm4_new,extrapolation_bc=Interpolations.Flat())
 
+const KM=fm*1e18
+
+nVe1=LinearInterpolation(Etab1[1:end].*fmm4_new,Ntab1.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
+nVe2=LinearInterpolation(Etab2[1:end].*fmm4_new,Ntab2.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
+
 ∂P(r,Pr,Mr,ϵ)=-G*(ϵ(Pr)+Pr/c^2)*(Mr+4*π*Pr*(r)^3/c^2)/((r)^2*(1-2*G*Mr/((r)*c^2)))
 ∂M(r,Pr,Mr,ϵ)=4*π*(r)^2*ϵ(Pr)
 
-function oneTOV(ϵ,P0,Rmax)
+function oneTOV(ϵ,nVe,P0,Rmax)
     δ=1e-3km
     p=P0
     r=0.0
     m=0.0
+    a=0.0
     resR=[r]
     resP=[p]
     resM=[m]
+    resA=[a]
     while r<Rmax
         r=r+δ
         p=∂P(r,p,m,ϵ)*δ + p
         m=∂M(r,p,m,ϵ)*δ + m
+        a=δ*4*π*r^2*nVe(ϵ(p))*(1-2*G*m/r)^(-1/2) + a
+        #a=δ*4*π*r^2*nVe(ϵ(p)) + a
         if p<=0.0
             push!(resP,p)
             push!(resM,m)
             push!(resR,r)
+            push!(resA,a)
             break
         end
     end
-    return resP,resM./Msol,resR,r
+    return resP,resM./Msol,resR,r,resA
 end
 
-function MRall(ϵ,P0)
+function MRall(ϵ,nVe,P0)
     M=Float64[]
     R=Float64[]
-    for k in -3:0.02:1.3
-        p1tov,m1tov,x,r1tov=oneTOV(ϵ,P0*10^k,100km)
+    A=Float64[]
+    for k in -3:0.02:1.5
+        p1tov,m1tov,x,r1tov,a1tov=oneTOV(ϵ,nVe,P0*10^k,100km)
         push!(M,m1tov[end])
         push!(R,r1tov)
+        push!(A,a1tov[end])
     end
     @show maximum(M)
-    return M,R
+    return M,R,A
 end
 
-mtest1,rtest1=MRall(Eeos1,Ptab2[100].*fmm4_new)
-mtest2,rtest2=MRall(Eeos2,Ptab2[100].*fmm4_new)
+mtest1,rtest1,atest1=MRall(Eeos1,nVe1,Ptab2[100].*fmm4_new)
+mtest2,rtest2,atest2=MRall(Eeos2,nVe2,Ptab2[100].*fmm4_new)
+
+#writedlm(string("G",GV,"ToV.dat"),hcat(mtest1,rtest1,atest1))
 
 plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1714")
     plot!(rtest1,mtest1,color=:blue,label="QMC")
@@ -762,11 +777,14 @@ function Pdark(nX)
 end
 
 function export_data(label)
+    writedlm(string("TOV_",label,".dat"),hcat(mtest1, rtest1, atest1))
     writedlm(string("dens_",label,".dat"),Btab)
     writedlm(string("EoS_",label,".dat"),
              hcat(Ptab,Etab,
                   Pdark.(Btab[:,6]),dark.(Btab[:,6])))
 end
+
+export_data(string("Mx",mX,"NonlyG",GV,"fm2"))
 
 ## Including DM on the other EOSs
 
@@ -827,5 +845,101 @@ ddheos=hcat(ddh[:,5],
 plot( ddh[:,2],ddheos[:,3].+1e-4,yaxis=:log,label="n")
 plot!(ddh[:,2],ddheos[:,4].+1e-4,yaxis=:log,label="p",title="DDH(RMF)",titlefont=10)
 
-function includeDM(table,nn_index)
+function includeDM(table,nn_index,e_index)
+    L=length(table[:,nn_index])
+    mun=[mn]
+    for i in 1:L-1
+        mun0=(table[i+1,e_index]-table[i,e_index])/(table[i+1,nn_index]-table[i,nn_index]+1e-10)
+        push!(mun,mun0)
+    end
+    function darkequilibrium(mun0,i)
+        foo(lX)=(mun0-μX(table[i,nn_index],0,0,0,0,lX,0,0))^2
+        mn=optimize(x->foo(abs(x[1])),[table[i,nn_index]],ConjugateGradient(),Optim.Options(g_tol=1e-8))
+        nX=cut(mn.minimizer[1])
+        return nX
+    end
+    nXv=Float64[]
+    for i in 1:L
+        push!(nXv,darkequilibrium(mun[i],i))
+    end
+    return nXv
+end
+
+#sk1eos=hcat(sk1eos,includeDM(sk1eos,3,1))
+#sk1eos=hcat(sk1eos,dark.(sk1eos[:,end])/mevpfm3,
+#            Pdark.(sk1eos[:,end])/mevpfm3)
+#writedlm("sk1.labels",[
+#                      "energy",
+#                      "pressure",
+#                      "n_dens",
+#                      "p_dens",
+#                      "e_dens",
+#                      "µ_dens",
+#                      "X_dens",
+#                      "DM energy",
+#                      "DM pressure",
+#                      ])
+#writedlm("sk1.dat",sk1eos)
+#
+#plot(sk1[:,2],sk1eos[:,3].+1e-4,yaxis=:log,label="n")
+#plot!(sk1[:,2],sk1eos[:,4].+1e-4,yaxis=:log,label="p")                          
+#plot!(sk1[:,2],sk1eos[:,5].+1e-4,yaxis=:log,label="e")                         
+#plot!(sk1[:,2],sk1eos[:,6].+1e-4,yaxis=:log,label="μ",title="SLy4",titlefont=10)
+#plot!(sk1[:,2],sk1eos[:,7].+1e-4,label="Χ")
+#savefig("skyrme1.pdf")
+#
+#sk2eos=hcat(sk2eos,includeDM(sk2eos,3,1))
+#sk2eos=hcat(sk2eos,dark.(sk2eos[:,end])/mevpfm3,
+#            Pdark.(sk2eos[:,end])/mevpfm3)
+#writedlm("sk2.labels",[
+#                      "energy",
+#                      "pressure",
+#                      "n_dens",
+#                      "p_dens",
+#                      "e_dens",
+#                      "µ_dens",
+#                      "X_dens",
+#                      "DM energy",
+#                      "DM pressure",
+#                      ])
+#writedlm("sk2.dat",sk2eos)
+#
+#plot(sk2[:,2],sk2eos[:,3].+1e-4,yaxis=:log,label="n")
+#plot!(sk2[:,2],sk2eos[:,4].+1e-4,yaxis=:log,label="p")                          
+#plot!(sk2[:,2],sk2eos[:,5].+1e-4,yaxis=:log,label="e")                         
+#plot!(sk2[:,2],sk2eos[:,6].+1e-4,yaxis=:log,label="μ",title="Sk272",titlefont=10)
+#plot!(sk2[:,2],sk2eos[:,7].+1e-4,label="Χ")
+#savefig("skyrme2.pdf")
+#
+#ddheos=hcat(ddheos,includeDM(ddheos,3,1))
+#ddheos=hcat(ddheos,dark.(ddheos[:,end])/mevpfm3,
+#            Pdark.(ddheos[:,end])/mevpfm3)
+#writedlm("ddh.labels",[
+#                      "energy",
+#                      "pressure",
+#                      "n_dens",
+#                      "p_dens",
+#                      "X_dens",
+#                      "DM energy",
+#                      "DM pressure",
+#                      ])
+#writedlm("ddh.dat",ddheos)
+#
+#plot( ddh[:,2],ddheos[:,3].+1e-4,yaxis=:log,label="n")
+#plot!(ddh[:,2],ddheos[:,4].+1e-4,yaxis=:log,label="p",title="DDH(RMF)",titlefont=10)
+#plot!(ddh[:,2],ddheos[:,5].+1e-4)
+#savefig("ddh.pdf")
+#
+#plot(ddheos[:,end-1], ddheos[:,end],xaxis=[0,1300],yaxis=[0,1000])
+#plot!(sk2eos[:,end-1],sk2eos[:,end],xaxis=[0,1300],yaxis=[0,1000])
+#plot!(sk1eos[:,end-1],sk1eos[:,end],xaxis=[0,1300],yaxis=[0,1000])
+#
+#plot!(ddheos[:,1],ddheos[:,2],xaxis=[0,1800],yaxis=[0,1000])
+#plot!(sk2eos[:,1],sk2eos[:,2],xaxis=[0,1800],yaxis=[0,1000])
+#plot!(sk1eos[:,1],sk1eos[:,2],xaxis=[0,1800],yaxis=[0,1000])
+#
+#plot!(ddheos[:,1],ddheos[:,2]+ddheos[:,end],xaxis=[0,1800],yaxis=[0,1000])
+#plot!(sk2eos[:,1],sk2eos[:,2]+sk2eos[:,end],xaxis=[0,1800],yaxis=[0,1000])
+#plot!(sk1eos[:,1],sk1eos[:,2]+sk1eos[:,end],xaxis=[0,1800],yaxis=[0,1000])
+
 

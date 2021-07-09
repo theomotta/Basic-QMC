@@ -465,8 +465,6 @@ end
 @show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
 @show NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
 
-println("here"); while true sleep(0.1) end
-
 @show stdgsig,stdgdel,stdgomg,stdgrho
 
 # #You can setup the couplings by hand w/ the line below
