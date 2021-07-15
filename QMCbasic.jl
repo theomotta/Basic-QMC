@@ -43,7 +43,7 @@ const stdGdel=0.0
 const stdgdel=sqrt(stdGdel*mδ^2)
 
 #Overlap
-const λ3=0.02*fm^-1
+const λ3=0.0*fm^-1
 const E0=0*fm^-4
 const b=0.5*fm
 
@@ -559,7 +559,7 @@ function βnohyp(nb,x0=zeros(1).+0.01fmm3)
         return H(nn,np,0.0,0.0,0.0,ne,nμ,fitresult...)
     end
     velim(N)=eliminated(nb,N...)
-    opt=optimize(velim,zeros(1).+0.01fmm3,NelderMead(),Optim.Options(g_tol=1e-8))
+    opt=optimize(velim,zeros(1).+0.01fmm3,ConjugateGradient(),Optim.Options(g_tol=1e-8))
     (βne)=cut(opt.minimizer[1])
     βnμ=real(sqrt(kf(βne)^2+me^2-mμ^2 +0.0*im))^3 /(3π^2)
     βnp=βne+βnμ
@@ -616,16 +616,16 @@ function MatchCrusts()
     @show crust_n[idx2]/0.16
     qmcidx1=findmin(abs.(crust_e[idx1]*mevpfm3 .-Etab))
     qmcidx2=findmin(abs.(crust_e[idx2]*mevpfm3 .-Etab))
-    vEtab1=vcat(crust_e[1:idx1-1].*mevpfm3,Etab[qmcidx1[2]:end])
-    vPtab1=vcat(crust_p[1:idx1-1].*mevpfm3,Ptab[qmcidx1[2]:end])
-
-    vEtab2=vcat(crust_e[1:idx2-1].*mevpfm3,Etab[qmcidx2[2]:end])
-    vPtab2=vcat(crust_p[1:idx2-1].*mevpfm3,Ptab[qmcidx2[2]:end])
-
-    return vEtab1,vPtab1, vEtab2,vPtab2
+    vEtab1=vcat(crust_e[1:idx1-1].*mevpfm3,Etab[qmcidx1[2]+1:end])
+    vPtab1=vcat(crust_p[1:idx1-1].*mevpfm3,Ptab[qmcidx1[2]+1:end])
+    vNtab1=vcat(crust_n[1:idx1-1],         nrange[qmcidx1[2]+1:end])
+    vEtab2=vcat(crust_e[1:idx2-1].*mevpfm3,Etab[qmcidx2[2]+1:end])
+    vPtab2=vcat(crust_p[1:idx2-1].*mevpfm3,Ptab[qmcidx2[2]+1:end])
+    vNtab2=vcat(crust_n[1:idx2-1],         nrange[qmcidx2[2]+1:end])
+    return vEtab1,vPtab1, vEtab2,vPtab2 ,vNtab1,vNtab2
 end
 
-(Etab1,Ptab1,Etab2,Ptab2)=MatchCrusts()
+(Etab1,Ptab1,Etab2,Ptab2,Ntab1,Ntab2)=MatchCrusts()
 plot(crust_e,crust_p,marker=true,label="crust")
 plot!(Etab./mevpfm3,Ptab./mevpfm3,marker=true,label="qmc")
 plot!(xaxis=[0,200],yaxis=[0,10])
@@ -653,59 +653,74 @@ Eeos1=LinearInterpolation(Ptab1[1:end].*fmm4_new,Etab1[1:end].*fmm4_new,extrapol
 Peos2=LinearInterpolation(Etab2[1:end].*fmm4_new,Ptab2[1:end].*fmm4_new,extrapolation_bc=Interpolations.Flat())
 Eeos2=LinearInterpolation(Ptab2[1:end].*fmm4_new,Etab2[1:end].*fmm4_new,extrapolation_bc=Interpolations.Flat())
 
+const KM=fm*1e18
+nVe1=LinearInterpolation(Etab1[1:end].*fmm4_new,Ntab1.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
+nVe2=LinearInterpolation(Etab2[1:end].*fmm4_new,Ntab2.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
+
+
 ∂P(r,Pr,Mr,ϵ)=-G*(ϵ(Pr)+Pr/c^2)*(Mr+4*π*Pr*(r)^3/c^2)/((r)^2*(1-2*G*Mr/((r)*c^2)))
 ∂M(r,Pr,Mr,ϵ)=4*π*(r)^2*ϵ(Pr)
 
-function oneTOV(ϵ,P0,Rmax)
+function oneTOV(ϵ,nVe,P0,Rmax)
     δ=1e-3km
     p=P0
     r=0.0
     m=0.0
+    a=0.0
     resR=[r]
     resP=[p]
     resM=[m]
+    resA=[a]
     while r<Rmax
         r=r+δ
         p=∂P(r,p,m,ϵ)*δ + p
         m=∂M(r,p,m,ϵ)*δ + m
+        a=δ*4*π*r^2*nVe(ϵ(p))*(1-2*G*m/r)^(-1/2) + a
+        #a=δ*4*π*r^2*nVe(ϵ(p)) + a
         if p<=0.0
             push!(resP,p)
             push!(resM,m)
             push!(resR,r)
+            push!(resA,a)
             break
         end
-
     end
-    return resP,resM./Msol,resR,r
+    return resP,resM./Msol,resR,r,resA
 end
 
-function MRall(ϵ,P0)
+function MRall(ϵ,nVe,P0)
     M=Float64[]
     R=Float64[]
-    for k in -2:0.02:1.3
-        p1tov,m1tov,x,r1tov=oneTOV(ϵ,P0*10^k,100km)
+    A=Float64[]
+    for k in -3:0.02:1.3
+        p1tov,m1tov,x,r1tov,a1tov=oneTOV(ϵ,nVe,P0*10^k,100km)
         push!(M,m1tov[end])
         push!(R,r1tov)
+        push!(A,a1tov[end])
     end
     @show maximum(M)
-    return M,R
+    return M,R,A
 end
 
-mtest1,rtest1=MRall(Eeos1,Ptab2[100].*fmm4_new)
-mtest2,rtest2=MRall(Eeos2,Ptab2[100].*fmm4_new)
+mtest1,rtest1,atest1=MRall(Eeos1,nVe1,Ptab2[100].*fmm4_new)
+mtest2,rtest2,atest2=MRall(Eeos2,nVe2,Ptab2[100].*fmm4_new)
 
-plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1714")
+plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1614")
+    plot!([0,23], [2.01,2.01],color=:lightgray,lw=8,label="PSR-J0348",yticks=0:0.1:3)
     plot!(rtest1,mtest1,color=:blue,label="QMC")
     plot!(rtest2,mtest2,color=:blue,label="")
     for i in 1:length(rtest1)
         plot!([rtest1[i],rtest2[i]],[mtest1[i],mtest2[i]],label="",color=:blue,lw=0.4)
     end
     tovplot=plot!(xaxis=[10,15],frame=:box,xlabel="r(km)",ylabel="M/M⊙")
-    plot!([12.71+1.14,12.71+1.14,12.71-1.19,12.71-1.19,12.71+1.14],[1.34+0.15,1.34-0.16,1.34-0.16,1.34+0.15,1.34+0.15],lw=0.7,color=:gray,label="")
-    plot!([13.02+1.24,13.02+1.24,13.02-1.06,13.02-1.06,13.02+1.24],[1.44+0.15,1.44-0.14,1.44-0.14,1.44+0.15,1.44+0.15],lw=0.7,color=:gray,label="")
+    plot!([12.71+1.14,12.71+1.14,12.71-1.19,12.71-1.19,12.71+1.14],[1.34+0.15,1.34-0.16,1.34-0.16,1.34+0.15,1.34+0.15],lw=0.7,color=:black,label="NICER 1: Riley et al 2019")
+    plot!([13.02+1.24,13.02+1.24,13.02-1.06,13.02-1.06,13.02+1.24],[1.44+0.15,1.44-0.14,1.44-0.14,1.44+0.15,1.44+0.15],lw=0.7,color=:black,label="NICER 2: Miller et al 2019")
     plot!([11.9+1.4,11.9+1.4,11.9-1.4,11.9-1.4,11.9+1.4],[1.36,1.6,1.6,1.36,1.36],lw=1.5,color=:black,label="")
-    annotate!([11.1],[(1.6+1.36)/2+0.05],text("GW170817",9))
-    annotate!([11.4],[(1.6+1.36)/2-0.05],text("90% confidence",9))
-    annotate!([13.8],[1.53],text("NICER 2",9,:gray))
-    annotate!([12.],[1.22],text("NICER 1",9,:gray))
-savefig("tovplot.pdf")
+    annotate!([11.0],[(1.6+1.36)/2+0.05],text("GW170817",9))
+    annotate!([11.0],[(1.6+1.36)/2-0.05],text("90% CI",9))
+    annotate!([12.],[1.22],text("NICER 1",9))
+    annotate!([13.8],[1.53],text("NICER 2",9))
+    annotate!([13.4],[2.065],text("NICER 3",9))
+    plot!([12.39+1.3,12.39+1.3,12.39-0.98,12.39-0.98,12.39-0.98,12.39+1.3],[2.072-0.07,2.072+0.07,2.072+0.07,2.072+0.07,2.072-0.07],lw=0.7,color=:black,label="NICER 3: Riley et al 2021")
+#savefig("tovplot.pdf")
+

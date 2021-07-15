@@ -1,3 +1,5 @@
+#DARK MATTER
+
 using Pkg
 function pkgtry(PKG)
     try
@@ -44,8 +46,8 @@ const mρ=770MeV
 const mδ=983MeV
 
 #Dark Matter
-#const mX=mn
-#const GV=10.0fm^2
+const mX=mn
+const GV=500000.0fm^2
 
 #Couplings 2007 ω=6.11; ρ=2.74; σ=10.03
 const stdGsig=10.03fm^2
@@ -488,7 +490,6 @@ function NMfit_noδ(P) #P=[dens,bind,satener]
 end
 
 @time fitresult=NMfit_noδ([0.148fmm3,-15.8MeV,30MeV])
-
 @show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
 NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
 
@@ -505,6 +506,10 @@ function NMfitδ(Gdelta,P) #P=[dens,bind,satener]
     @show res
     return res.minimizer[1],gdelta,res.minimizer[2],res.minimizer[3]
 end
+
+#@time fitresult=NMfitδ(3.0fm^2,[0.148fmm3,-15.8MeV,30MeV])
+#@show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
+#NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
 
 Fock(0.17*fmm3,2*0.17*fmm3,0.1*0.17*fmm3,0,0,fitresult...)/mevpfm3
 Fockπ(0.17*fmm3,2*0.17*fmm3,0.1*0.17*fmm3,0,0)/mevpfm3
@@ -632,7 +637,8 @@ function adddark()
     end
 end
 
-@time Btab,Etab,Ptab=SF(βnohyp)
+#@time Btab,Etab,Ptab=SF(βnohyp)
+@time Btab,Etab,Ptab=SF(β)
 adddark()
 
 ######################################################################
@@ -738,7 +744,7 @@ function MRall(ϵ,nVe,P0)
     M=Float64[]
     R=Float64[]
     A=Float64[]
-    for k in -3:0.02:1.5
+    for k in -3:0.02:1.3
         p1tov,m1tov,x,r1tov,a1tov=oneTOV(ϵ,nVe,P0*10^k,100km)
         push!(M,m1tov[end])
         push!(R,r1tov)
@@ -751,22 +757,23 @@ end
 mtest1,rtest1,atest1=MRall(Eeos1,nVe1,Ptab2[100].*fmm4_new)
 mtest2,rtest2,atest2=MRall(Eeos2,nVe2,Ptab2[100].*fmm4_new)
 
-#writedlm(string("G",GV,"ToV.dat"),hcat(mtest1,rtest1,atest1))
-
-plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1714")
+plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1614")
+    plot!([0,23], [2.01,2.01],color=:lightgray,lw=8,label="PSR-J0348",yticks=0:0.1:3)
     plot!(rtest1,mtest1,color=:blue,label="QMC")
     plot!(rtest2,mtest2,color=:blue,label="")
     for i in 1:length(rtest1)
         plot!([rtest1[i],rtest2[i]],[mtest1[i],mtest2[i]],label="",color=:blue,lw=0.4)
     end
-    tovplot=plot!(xaxis=[5,15],frame=:box,xlabel="r(km)",ylabel="M/M⊙")
-    plot!([12.71+1.14,12.71+1.14,12.71-1.19,12.71-1.19,12.71+1.14],[1.34+0.15,1.34-0.16,1.34-0.16,1.34+0.15,1.34+0.15],lw=0.7,color=:gray,label="")
-    plot!([13.02+1.24,13.02+1.24,13.02-1.06,13.02-1.06,13.02+1.24],[1.44+0.15,1.44-0.14,1.44-0.14,1.44+0.15,1.44+0.15],lw=0.7,color=:gray,label="")
+    tovplot=plot!(xaxis=[10,15],frame=:box,xlabel="r(km)",ylabel="M/M⊙")
+    plot!([12.71+1.14,12.71+1.14,12.71-1.19,12.71-1.19,12.71+1.14],[1.34+0.15,1.34-0.16,1.34-0.16,1.34+0.15,1.34+0.15],lw=0.7,color=:black,label="NICER 1: Riley et al 2019")
+    plot!([13.02+1.24,13.02+1.24,13.02-1.06,13.02-1.06,13.02+1.24],[1.44+0.15,1.44-0.14,1.44-0.14,1.44+0.15,1.44+0.15],lw=0.7,color=:black,label="NICER 2: Miller et al 2019")
     plot!([11.9+1.4,11.9+1.4,11.9-1.4,11.9-1.4,11.9+1.4],[1.36,1.6,1.6,1.36,1.36],lw=1.5,color=:black,label="")
-    annotate!([11.1],[(1.6+1.36)/2+0.05],text("GW170817",9))
-    annotate!([11.4],[(1.6+1.36)/2-0.05],text("90% confidence",9))
-    annotate!([13.8],[1.53],text("NICER 2",9,:gray))
-    annotate!([12.],[1.22],text("NICER 1",9,:gray))
+    annotate!([11.0],[(1.6+1.36)/2+0.05],text("GW170817",9))
+    annotate!([11.0],[(1.6+1.36)/2-0.05],text("90% CI",9))
+    annotate!([12.],[1.22],text("NICER 1",9))
+    annotate!([13.8],[1.53],text("NICER 2",9))
+    annotate!([13.4],[2.065],text("NICER 3",9))
+    plot!([12.39+1.3,12.39+1.3,12.39-0.98,12.39-0.98,12.39-0.98,12.39+1.3],[2.072-0.07,2.072+0.07,2.072+0.07,2.072+0.07,2.072-0.07],lw=0.7,color=:black,label="NICER 3: Riley et al 2021")
 #savefig("tovplot.pdf")
 
 function Pdark(nX)
@@ -785,3 +792,6 @@ function export_data(label)
 end
 
 export_data(string("Mx",mX,"NonlyG",GV,"fm2"))
+
+
+
