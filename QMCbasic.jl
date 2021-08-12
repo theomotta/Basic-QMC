@@ -452,14 +452,6 @@ end
 #Check current NM parameters
 @time NMparameters(stdgsig,stdgdel,stdgomg,stdgrho)./(fmm3,MeV,MeV)
 
-##Fit function without delta
-#function NMfit_noδ(P) #P=[dens,bind,satener]
-#    g(X)=(sum(( (NMparameters(X[1],0,X[2],X[3]) .-P)./P ).^2 ))
-#    res=optimize(g,[stdgsig,stdgomg,stdgrho],method=NelderMead(),g_tol=1e-7)
-#    @show res
-#    return res.minimizer[1],0.0,res.minimizer[2],res.minimizer[3]
-#end
-
 function NMfitδ(Gdelta,P) #P=[dens,bind,satener]
     gdelta=sqrt(mδ^2*Gdelta)
     g(X)=sum( ((NMparameters(X[1],gdelta,X[2],X[3]).-P)./P).^2 )
@@ -467,11 +459,6 @@ function NMfitδ(Gdelta,P) #P=[dens,bind,satener]
     @show res
     return res.minimizer[1],gdelta,res.minimizer[2],res.minimizer[3]
 end
-
-#@time fitresult=NMfit_noδ([0.148fmm3,-15.8MeV,30MeV])
-#@show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
-#@show NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
-#@show stdgsig,stdgdel,stdgomg,stdgrho
 
 @time fitresult=NMfitδ(0fm^2,[0.148fmm3,-15.8MeV,30MeV])
 @show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
