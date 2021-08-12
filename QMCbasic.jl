@@ -99,38 +99,38 @@ end
 
 const rb=RB/fm #Unitless RB. As long as fm=1 this is moot, but in case we change units...
 
-# #Here I'm assuming no delta meson interaction but you can use the polarizibilities from my other code below if you wish.
-#Scalar polarizibilities from 2007 paper
-const dσn=(0.0022+0.1055*rb-0.0178*rb^2)
-const dσp=dσn
-const dσΛ=(0.0016+0.0686*rb-0.0084*rb^2)
-const dσΞ0=dσΞm=(-0.0014+0.0416*rb-0.0061*rb^2)
-const dδn=dδp=dδΛ=dδΞ0=dδΞm=0.0
-const d2p=d2n=d2Λ=d2Ξ0=d2Ξm=0.0
+## #Here I'm assuming no delta meson interaction but you can use the polarizibilities from my other code below if you wish.
+##Scalar polarizibilities from 2007 paper
+#const dσn=(0.0022+0.1055*rb-0.0178*rb^2)
+#const dσp=dσn
+#const dσΛ=(0.0016+0.0686*rb-0.0084*rb^2)
+#const dσΞ0=dσΞm=(-0.0014+0.0416*rb-0.0061*rb^2)
+#const dδn=dδp=dδΛ=dδΞ0=dδΞm=0.0
+#const d2p=d2n=d2Λ=d2Ξ0=d2Ξm=0.0
+#
+##Hyperon weights (linear multiplicative term on the mass)
+#const ωσn=ωσp=-1.0
+#const ωσΛ=-(0.6672+0.0462*rb-0.0021*rb^2)
+#const ωσΞm=ωσΞ0=-(0.3395+0.0282*rb-0.0128*rb^2)
+#const ωδn=ωδp=0.0
+#const ωδΛ=0.0
+#const ωδΞm=ωδΞ0=0.0
 
-#Hyperon weights (linear multiplicative term on the mass)
-const ωσn=ωσp=-1.0
-const ωσΛ=-(0.6672+0.0462*rb-0.0021*rb^2)
-const ωσΞm=ωσΞ0=-(0.3395+0.0282*rb-0.0128*rb^2)
-const ωδn=ωδp=0.0
-const ωδΛ=0.0
-const ωδΞm=ωδΞ0=0.0
+ #Scalar polatizibilities from my previous code for checking
+proton_fit = (-1.0020490905843504, -0.5000073592968122, 0.00039048040033750996, 0.001036167880136899, 0.00041629613837873477)
+(ωσp,ωδp,dσp,dδp,d2p)=proton_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
 
-# #Scalar polatizibilities from my previous code for checking
-#proton_fit = (-1.0020490905843504, -0.5000073592968122, 0.00039048040033750996, 0.001036167880136899, 0.00041629613837873477)
-#(ωσp,ωδp,dσp,dδp,d2p)=proton_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
-#
-#neutron_fit = (-1.0020490905843504, 0.5000111670421129, 0.00039048040033750996, 0.001033289359647953, -0.0004166337075839663)
-#(ωσn,ωδn,dσn,dδn,d2n)=neutron_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
-#
-#Λ_fit = (-0.703521253522257, 1.2692484847367558e-6, 0.00026586230236864375, 0.0006898190799256536, -1.1252306841256818e-7)
-#(ωσΛ,ωδΛ,dσΛ,dδΛ,d2Λ)=Λ_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
-#
-#Ξ0_fit = (-0.34095286459095936, -0.5000086285452198, 0.0001413602490885336, 0.0003463488002066139, 0.0004164086614463546)
-#(ωσΞ0,ωδΞ0,dσΞ0,dδΞ0,d2Ξ0)=Ξ0_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
-#
-#Ξm_fit = (-0.34095286459095936, 0.5000098977936963, 0.0001413602490885336, 0.0003434702797183014, -0.0004165211845146568)
-#(ωσΞm,ωδΞm,dσΞm,dδΞm,d2Ξm)=Ξm_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
+neutron_fit = (-1.0020490905843504, 0.5000111670421129, 0.00039048040033750996, 0.001033289359647953, -0.0004166337075839663)
+(ωσn,ωδn,dσn,dδn,d2n)=neutron_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
+
+Λ_fit = (-0.703521253522257, 1.2692484847367558e-6, 0.00026586230236864375, 0.0006898190799256536, -1.1252306841256818e-7)
+(ωσΛ,ωδΛ,dσΛ,dδΛ,d2Λ)=Λ_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
+
+Ξ0_fit = (-0.34095286459095936, -0.5000086285452198, 0.0001413602490885336, 0.0003463488002066139, 0.0004164086614463546)
+(ωσΞ0,ωδΞ0,dσΞ0,dδΞ0,d2Ξ0)=Ξ0_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
+
+Ξm_fit = (-0.34095286459095936, 0.5000098977936963, 0.0001413602490885336, 0.0003434702797183014, -0.0004165211845146568)
+(ωσΞm,ωδΞm,dσΞm,dδΞm,d2Ξm)=Ξm_fit.*(1.,1.,1/MeV,1/MeV,1/MeV)
 
 Mn(sig,del,gsig,gdel)= mn +ωσn*gsig*sig +(dσn)*(gsig*sig)^2 +ωδn*gdel*del +(dδn)*(gdel*del)^2 + (d2n)*gdel*del*gsig*sig
 Mp(sig,del,gsig,gdel)= mp +ωσp*gsig*sig +(dσp)*(gsig*sig)^2 +ωδp*gdel*del +(dδp)*(gdel*del)^2 + (d2p)*gdel*del*gsig*sig
@@ -430,16 +430,16 @@ end
 
 function NMparameters(gsig,gdel,gomg,grho)
     ℰfit(n)=H(n/2,n/2,0,0,0,0,0,gsig,gdel,gomg,grho)/n-mn
-    dEfit(x)=d1f(ℰfit,x,0.001fmm3)
+    dEfit(x)=d1f(ℰfit,x,0.003fmm3)
     Sfit(n)=(H(n,0,0,0,0,0,0,gsig,gdel,gomg,grho)-H(n/2,n/2,0,0,0,0,0,gsig,gdel,gomg,grho))/n
-    nsat=quickNR(dEfit,0.001fmm3,0.01fmm3,0.001fmm3,absit=true)
+    nsat=quickNR(dEfit,0.003fmm3,0.01fmm3,0.003fmm3,absit=true)
     return nsat,ℰfit(nsat),Sfit(nsat)
 end
 function NMparametersFull(gsig,gdel,gomg,grho)
     ℰfit(n)=H(n/2,n/2,0,0,0,0,0,gsig,gdel,gomg,grho)/n-mn
     dEfit(x)=d1f(ℰfit,x,0.001fmm3)
     Sfit(n)=(H(n,0,0,0,0,0,0,gsig,gdel,gomg,grho)-H(n/2,n/2,0,0,0,0,0,gsig,gdel,gomg,grho))/n
-    nsat=quickNR(dEfit,0.001fmm3,0.01fmm3,0.001fmm3,absit=true)
+    nsat=quickNR(dEfit,0.003fmm3,0.01fmm3,0.003fmm3,absit=true)
     function K0(n,del=0.003*fm^-3)
         return 9*n^2*(d1f(dEfit,n,del))
     end
@@ -452,32 +452,35 @@ end
 #Check current NM parameters
 @time NMparameters(stdgsig,stdgdel,stdgomg,stdgrho)./(fmm3,MeV,MeV)
 
-#Fit function without delta
-function NMfit_noδ(P) #P=[dens,bind,satener]
-    g(X)=(sum(( (NMparameters(X[1],0,X[2],X[3]) .-P)./P ).^2 ))
+##Fit function without delta
+#function NMfit_noδ(P) #P=[dens,bind,satener]
+#    g(X)=(sum(( (NMparameters(X[1],0,X[2],X[3]) .-P)./P ).^2 ))
+#    res=optimize(g,[stdgsig,stdgomg,stdgrho],method=NelderMead(),g_tol=1e-7)
+#    @show res
+#    return res.minimizer[1],0.0,res.minimizer[2],res.minimizer[3]
+#end
+
+function NMfitδ(Gdelta,P) #P=[dens,bind,satener]
+    gdelta=sqrt(mδ^2*Gdelta)
+    g(X)=sum( ((NMparameters(X[1],gdelta,X[2],X[3]).-P)./P).^2 )
     res=optimize(g,[stdgsig,stdgomg,stdgrho],method=NelderMead(),g_tol=1e-7)
     @show res
-    return res.minimizer[1],0.0,res.minimizer[2],res.minimizer[3]
+    return res.minimizer[1],gdelta,res.minimizer[2],res.minimizer[3]
 end
 
-@time fitresult=NMfit_noδ([0.148fmm3,-15.8MeV,30MeV])
+#@time fitresult=NMfit_noδ([0.148fmm3,-15.8MeV,30MeV])
+#@show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
+#@show NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
+#@show stdgsig,stdgdel,stdgomg,stdgrho
 
+@time fitresult=NMfitδ(0fm^2,[0.148fmm3,-15.8MeV,30MeV])
 @show fitresult.^2 ./(mσ^2,mδ^2,mω^2,mρ^2) ./(fm^2)
 @show NMparametersFull(fitresult...)./(fmm3,MeV,MeV,MeV,MeV)
-
 @show stdgsig,stdgdel,stdgomg,stdgrho
 
 # #You can setup the couplings by hand w/ the line below
 # fitresult=sqrt.([9.5,0.0,5.67,2.35].*[mσ^2,mδ^2,mω^2,mρ^2])
 # fitresult=sqrt.([11.25,0.0,7.1,3.5].*[mσ^2,mδ^2,mω^2,mρ^2])
-
-function NMfitδ(Gdelta,P) #P=[dens,bind,satener]
-    gdelta=sqrt(mδ^2*Gdelta)
-    g(X)=sum( abs.((NMparameters(X[1],gdelta,X[2],X[3]).-P)./P) )
-    res=optimize(g,[stdgsig,gdelta,stdgomg,stdgrho],NelderMead())
-    @show res
-    return res.minimizer[1],gdelta,res.minimizer[2],res.minimizer[3]
-end
 
 Fock(0.17*fmm3,2*0.17*fmm3,0.1*0.17*fmm3,0,0,fitresult...)/mevpfm3
 Fockπ(0.17*fmm3,2*0.17*fmm3,0.1*0.17*fmm3,0,0)/mevpfm3
