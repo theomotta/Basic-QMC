@@ -647,53 +647,78 @@ const KM=fm*1e18
 nVe1=LinearInterpolation(Etab1[1:end].*fmm4_new,Ntab1.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
 nVe2=LinearInterpolation(Etab2[1:end].*fmm4_new,Ntab2.*(KM^(3)),extrapolation_bc=Interpolations.Flat())
 
-
 ∂P(r,Pr,Mr,ϵ)=-G*(ϵ(Pr)+Pr/c^2)*(Mr+4*π*Pr*(r)^3/c^2)/((r)^2*(1-2*G*Mr/((r)*c^2)))
 ∂M(r,Pr,Mr,ϵ)=4*π*(r)^2*ϵ(Pr)
-
+#
+eλ(r,Mr)=(1 - 2*G*Mr/(c^4*r))^-1
+∂ν(r,Pr,Mr)= 2*(Mr+4π*r^3*Pr)*eλ(r,Mr)/r^2
+#
+cs2(Pr,ϵ,del)= ( (ϵ(Pr+del)-ϵ(Pr))/del )^-1 
+#
+function W(r,Pr,Mr,ϵ,del)
+    W1= 4π*eλ(r,Mr)*( 5*ϵ(Pr) + 9*Pr + (ϵ(Pr)+Pr)/cs2(Pr,ϵ,del) )
+    W2= -6eλ(r,Mr)/r^2 
+    W3= -∂ν(r,Pr,Mr)^2
+    return W1+W2+W3
+end
+#
+function ∂y(r,Yr,Pr,Mr,ϵ,del=0.01*mevpfm3*fmm4_new)
+    y1=Yr^2
+    y2=r^2*W(r,Pr,Mr,ϵ,del)
+    y3=Yr*eλ(r,Mr)*( 1+4π*r^2*(Pr-ϵ(Pr)))
+    yp=y1+y2+y3
+    return -yp/r
+end
+#
 function oneTOV(ϵ,nVe,P0,Rmax)
     δ=1e-3km
     p=P0
     r=0.0
     m=0.0
     a=0.0
+    y=2.0
     resR=[r]
     resP=[p]
     resM=[m]
     resA=[a]
+    resY=[y]
     while r<Rmax
         r=r+δ
         p=∂P(r,p,m,ϵ)*δ + p
         m=∂M(r,p,m,ϵ)*δ + m
         a=δ*4*π*r^2*nVe(ϵ(p))*(1-2*G*m/r)^(-1/2) + a
-        #a=δ*4*π*r^2*nVe(ϵ(p)) + a
-        if p<=0.0
-            push!(resP,p)
-            push!(resM,m)
-            push!(resR,r)
-            push!(resA,a)
+        y=∂y(r,y,p,m,ϵ)*δ + y
+        #    
+        push!(resP,p)
+        push!(resM,m)
+        push!(resR,r)
+        push!(resA,a)
+        push!(resY,y)
+        if p<=0.0 
             break
         end
     end
-    return resP,resM./Msol,resR,r,resA
+    return resP,resM./Msol,resR,r,resA,resY
 end
-
+#
 function MRall(ϵ,nVe,P0)
     M=Float64[]
     R=Float64[]
     A=Float64[]
+    Y=Float64[]
     for k in -3:0.02:1.3
-        p1tov,m1tov,x,r1tov,a1tov=oneTOV(ϵ,nVe,P0*10^k,100km)
+        p1tov,m1tov,x,r1tov,a1tov,y1tov=oneTOV(ϵ,nVe,P0*10^k,100km)
         push!(M,m1tov[end])
         push!(R,r1tov)
         push!(A,a1tov[end])
+        push!(Y,y1tov[end])
     end
     @show maximum(M)
-    return M,R,A
+    return M,R,A,Y
 end
 
-mtest1,rtest1,atest1=MRall(Eeos1,nVe1,Ptab2[100].*fmm4_new)
-mtest2,rtest2,atest2=MRall(Eeos2,nVe2,Ptab2[100].*fmm4_new)
+mtest1,rtest1,atest1,ytest1=MRall(Eeos1,nVe1,Ptab2[100].*fmm4_new)
+mtest2,rtest2,atest2,ytest2=MRall(Eeos2,nVe2,Ptab2[100].*fmm4_new)
 
 plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1614")
     plot!([0,23], [2.01,2.01],color=:lightgray,lw=8,label="PSR-J0348",yticks=0:0.1:3)
@@ -713,4 +738,28 @@ plot([0,23], [1.908,1.908],color=:gray,lw=3,label="PSR-J1614")
     annotate!([13.4],[2.065],text("NICER 3",9))
     plot!([12.39+1.3,12.39+1.3,12.39-0.98,12.39-0.98,12.39-0.98,12.39+1.3],[2.072-0.07,2.072+0.07,2.072+0.07,2.072+0.07,2.072-0.07],lw=0.7,color=:black,label="NICER 3: Riley et al 2021")
 #savefig("tovplot.pdf")
+
+function love(m,r,y)
+    beta=m/r
+    #return 8/5* beta^5 * (1-2 beta)^2 * (2-y+2 beta*(y-1)) * (2 *beta *(6-3 y+3 beta*(5 y-8)+2 beta^2 *(13-11 y+beta*(3*y-2)+2 *beta^2 *(1+y)))+3(1-2 beta)^2 * (2-y+2 *beta*(y*-1)) *log(1-2*beta))^(-1)
+    l1=2*beta*(6-3*y+3*beta*(5*y-8)+2*beta^2*(13-11*y+beta*(3*y-2)+2*beta^2*(1+y)))
+    l2=3*(1-2*beta)^2 * (2-y+2*beta*(y-1)) * log(1-2*beta)
+    l3=l1+l2
+    l=8/5 * beta^5 * (1-2*beta)^2 * (2-y+2*beta*(y-1)) * (l3)^-1
+    return l
+end
+#
+love1=[love(mtest1[i].*Msol,rtest1[i],ytest1[i]) for i in 1:length(mtest1)]
+love2=[love(mtest2[i].*Msol,rtest2[i],ytest2[i]) for i in 1:length(mtest2)]
+plot(mtest1./rtest1 .*Msol,love1)
+plot!(mtest2./rtest2 .*Msol,love2)
+
+plot(mtest2,love2 .* (mtest2./rtest2 .*Msol).^-5 .* (2/3), xaxis=([1,2],1:0.1:2),yaxis=[0,3000])
+
+
+
+
+
+
+
 
